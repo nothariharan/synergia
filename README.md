@@ -1,10 +1,10 @@
 # Underwater Computer Vision System
 
-This project is an end-to-end underwater processing system built for the IIIT Sri City Chittoor curriculum. It processes optical underwater footage in real-time to detect, track, and analyze objects. The system displays an annotated output with bounding boxes, object class, confidence, and real-time calculations for distance, bearing, and risk.
+This project is an end-to-end underwater processing system built for Synergia Hackathon. It processes optical underwater footage in real-time to detect, track, and analyze objects. The system displays an annotated output with bounding boxes, object class, confidence, and real-time calculations for distance, bearing, and risk.
 
-![System Demo](https://i.imgur.com/LPA03fE.jpeg)
+![System Demo](images/demoimg.png)
 
-*(This is a placeholder image. I recommend running your script, taking a great screenshot, and replacing the link above with your own.)*
+*(This is a demo of the project detecting objects)*
 
 ---
 
