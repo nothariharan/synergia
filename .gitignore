@@ -1,0 +1,21 @@
+# Generated output
+*.csv
+*.log
+
+# Video data
+*.mp4
+*.MP4
+
+# Trained models
+*.pt
+
+# Datasets
+*.zip
+
+# Installers & tools
+*.exe
+*.7z
+ffmpeg-8.0-full_build/
+
+# VS Code cache
+.vscode/
