@@ -1,6 +1,6 @@
 # Underwater Computer Vision System
 
-This project is an end-to-end underwater processing system built for Synergia Hackathon. It processes optical underwater footage in real-time to detect, track, and analyze objects. The system displays an annotated output with bounding boxes, object class, confidence, and real-time calculations for distance, bearing, and risk.
+This project is an end-to-end underwater processing system built for the Synergia Hackathon. It processes optical underwater footage in real-time to detect, track, and analyze objects. The system displays an annotated output with bounding boxes, object class, confidence, and real-time calculations for distance, bearing, and risk.
 
 ![System Demo](images/demoimg.png)
 
@@ -11,11 +11,12 @@ This project is an end-to-end underwater processing system built for Synergia Ha
 ## Features
 
 * **Real-time Object Detection:** Utilizes a trained YOLOv8n model to detect 9 classes of underwater objects.
-* **Object Tracking:** Tracks unique objects from frame to frame, even with temporary "blinking" in fast modes.
+* **Live Camera Feed:** Can process a live feed directly from a USB webcam for real-time, onboard deployment.
+* **Object Tracking:** Tracks unique objects from frame to frame.
 * **Distance Estimation:** Calculates the distance (in inches) to an object based on its known real-world height.
 * **Bearing Angle Estimation:** Calculates the horizontal angle (in degrees) from the camera's center to the object.
 * **Risk Scoring:** Assigns a "Low," "Medium," or "High" risk score to each object based on its class and proximity. Bounding boxes are color-coded based on risk.
-* **CSV Data Logging:** Exports all detection data (frame, class, distance, bearing, etc.) to a `detection_log.csv` file for external analysis.
+* **CSV Data Logging:** Exports all detection data (frame, class, distance, bearing, etc.) to a `.csv` file for external analysis.
 * **Interactive UI:** Provides an on-screen UI with clickable buttons for "Pause," "Normal," "Fast," and "Super Fast" playback.
 
 ---
@@ -54,7 +55,7 @@ The core system is built in Python using OpenCV and the Ultralytics library.
 * **GPU:** An **NVIDIA GPU** (e.g., RTX 3050 or better) is required for real-time performance.
 * **OS:** Windows 10/11
 * **Python:** 3.10 - 3.12 (Python 3.13 may have issues with some libraries)
-* **FFmpeg:** Required for video file pre-processing.
+* **FFmpeg:** Required for video file pre-processing (if not using a live camera).
 
 ---
 
@@ -62,24 +63,18 @@ The core system is built in Python using OpenCV and the Ultralytics library.
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [your-github-repo-link]
-    cd [your-repo-name]
+    git clone https://github.com/nothariharan/synergia.git
+    cd synergia
     ```
 
-2.  **Install FFmpeg (Video Tool):**
-    OpenCV can have issues with standard MP4 files that contain audio.
-    * Download FFmpeg from: [gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
-    * Unzip the file and add the `bin` folder to your Windows PATH.
-    * This is required for the "Prepare Video" step.
-
-3.  **Install PyTorch (GPU Version):**
+2.  **Install PyTorch (GPU Version):**
     This is the most critical step. You must install the version of PyTorch that matches your GPU's CUDA version.
     * **Uninstall old versions:** `pip uninstall torch torchvision torchaudio`
     * **Go to:** [https://pytorch.org/get-started/locally/](https://pytorch.org/get-started/locally/)
     * **Select:** `Stable`, `Windows`, `Pip`, `Python`, and `CUDA 12.x`
     * Run the generated command (e.g., `pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`).
 
-4.  **Install Dependencies:**
+3.  **Install Dependencies:**
     Install the rest of the required Python libraries.
     ```bash
     pip install -r requirements.txt
@@ -91,25 +86,50 @@ The core system is built in Python using OpenCV and the Ultralytics library.
 
 1.  **Download the Model:**
     This repository does not include the large model file. Download the trained `yolov8n.pt` file from:
-    **[<-- PASTE YOUR GOOGLE DRIVE / GITHUB RELEASE LINK HERE -->]**
+    **[<-- will provide after hackathon -->]**
     Place the `yolov8n.pt` file in this project's main folder.
 
-2.  **Prepare Your Video:**
-    Before running, you must remove the audio stream from your test video.
-    ```bash
-    # This creates a 'test1_clean.mp4' file
-    ffmpeg -i test1.MP4 -c:v copy -an test1_clean.mp4
-    ```
+2.  **Configure the Script:**
+    Open `run_underwater.py` and `find_camera.py`.
 
-3.  **Configure the Script:**
-    Open `run_underwater.py` and modify the following:
-    * **`VIDEO_FILE`:** Change to the name of your clean video (e.g., `test1_clean.mp4`).
-    * **`KNOWN_HEIGHTS_INCHES`:** Verify that the real-world heights (in inches) for your objects are correct.
+3.  **Run Mode 1: Live Camera (Default)**
+    * In `run_underwater.py`, make sure the `VIDEO_FILE` variable is set to a camera index (e.g., `VIDEO_FILE = 0`).
+    * Run the script:
+        ```bash
+        python run_underwater.py
+        ```
 
-4.  **Run the System:**
+4.  **Run Mode 2: Pre-recorded Video**
+    * **Prepare Video:** You must first remove the audio stream from your test video.
+        ```bash
+        # (Requires FFmpeg to be installed)
+        ffmpeg -i test1.MP4 -c:v copy -an test1_clean.mp4
+        ```
+    * **Configure Script:** In `run_underwater.py`, change `VIDEO_FILE` to the name of your clean video.
+        ```python
+        VIDEO_FILE = 'test1_clean.mp4'
+        ```
+    * Run the script:
+        ```bash
+        python run_underwater.py
+        ```
+
+### Troubleshooting (Live Camera)
+
+If you run the script in "Live Camera" mode and get a **black screen, an error, or no feed**:
+
+1.  Make sure all other apps (Zoom, Teams, etc.) are closed.
+2.  Run the included troubleshooting script:
     ```bash
-    python run_underwater.py
+    python find_camera.py
     ```
+3.  This script will test all camera indexes and drivers. It will output a success message like:
+    `SUCCESS: Camera found at index 0 (Default Driver)`
+    or
+    `SUCCESS: Camera found at index 1 (DSHOW Driver)`
+4.  Open `run_underwater.py` and modify the `cap = cv2.VideoCapture(...)` line (around line 235) to match the successful settings from the test.
+    * **Example 1:** If the test said "index 1 (DSHOW)", change `VIDEO_FILE = 1` and `cap = cv2.VideoCapture(VIDEO_FILE + cv2.CAP_DSHOW)`.
+    * **Example 2:** If the test said "index 0 (Default)", change `VIDEO_FILE = 0` and `cap = cv2.VideoCapture(VIDEO_FILE)`.
 
 ---
 
@@ -125,4 +145,4 @@ The core system is built in Python using OpenCV and the Ultralytics library.
 
 ## Output
 
-The system generates a file named **`detection_log.csv`** in the project folder. This file contains a frame-by-frame log of every object detected, including its class, confidence, distance, bearing, and risk score.
+The system generates a file named **`detection_log.csv`** (or a timestamped file like `log_2025-11-06_07-10-15.csv` for live sessions). This file contains a frame-by-frame log of every object detected, including its class, confidence, distance, bearing, and risk score.

@@ -4,13 +4,20 @@ from ultralytics import YOLO
 from collections import defaultdict
 import torch
 import time  
-import csv # new: import csv module
+import csv 
+from datetime import datetime 
 
 print(f"--- Is CUDA (GPU) available? {torch.cuda.is_available()} ---")
 
 # --- 1. configuration ---
 
-VIDEO_FILE = 'test2_clean.mp4'  # input video
+# === FOR VIDEO FILE (Current) ===
+# VIDEO_FILE = 'test2_clean.mp4'  # input video
+
+# === FOR LIVE CAMERA (Future) ===
+# (To switch to live, comment out the line above and uncomment the line below)
+VIDEO_FILE = 0  # 0 is the default webcam. Try 1 or 2 if you have multiple cameras.
+
 
 # measured heights of objects in inches
 KNOWN_HEIGHTS_INCHES = {
@@ -25,7 +32,7 @@ KNOWN_HEIGHTS_INCHES = {
     'Other': 10
 }
 
-# --- new: phase 3 risk score configuration ---
+# --- phase 3 risk score configuration ---
 RISK_LEVELS = {
     'Cable': 1.0,           
     'Thread': 1.0,          
@@ -41,7 +48,7 @@ RISK_COLOR_LOW = (0, 255, 0)
 RISK_COLOR_MEDIUM = (0, 255, 255) 
 RISK_COLOR_HIGH = (0, 0, 255)     
 
-# --- new: faster 720p processing ---
+# --- 720p processing ---
 IMAGE_WIDTH = 1280
 IMAGE_HEIGHT = 720
 HORIZONTAL_FOV = 80.0
@@ -86,7 +93,7 @@ def get_smoothed_distance(track_id, distance_inches):
         history.pop(0)
     return np.mean(history)
 
-# --- new: phase 3 risk function ---
+# --- phase 3 risk function ---
 def calculate_risk(class_name, distance_inches):
     base_risk = RISK_LEVELS.get(class_name, 0.5) 
     
@@ -153,21 +160,45 @@ def mouse_callback(event, x, y, flags, param):
 
 # --- 5. main processing loop ---
 
-cap = cv2.VideoCapture(VIDEO_FILE)
+# --- new: intelligent camera/file opening ---
+if isinstance(VIDEO_FILE, int):
+    # it's a live camera
+    cap = cv2.VideoCapture(VIDEO_FILE + cv2.CAP_DSHOW)
+    # request 720p from the camera for faster processing
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, IMAGE_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, IMAGE_HEIGHT)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # set buffer size
+else:
+    # it's a video file
+    cap = cv2.VideoCapture(VIDEO_FILE)
+    # do not add CAP_DSHOW or set buffer
+
 if not cap.isOpened():
-    print(f"Error: Could not open video file {VIDEO_FILE}")
+    if isinstance(VIDEO_FILE, int):
+        print(f"Error: Could not open camera with index {VIDEO_FILE}.")
+        print("1. Is it plugged in? \n2. Is it used by another app (Zoom, Teams)? \n3. Did your 'find_camera.py' script find a different index (like 1)?")
+    else:
+        print(f"Error: Could not open video file {VIDEO_FILE}")
     exit()
+# --- end of new block ---
 
 cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL) 
 cv2.setMouseCallback(WINDOW_NAME, mouse_callback)
 cv2.resizeWindow(WINDOW_NAME, IMAGE_WIDTH, IMAGE_HEIGHT) 
 
-# --- new: setup csv file for logging ---
+# --- setup csv file for logging ---
+# (this logic is now separated from the camera opening)
+# === FOR VIDEO FILE (Current) ===
 csv_file_name = 'detection_log.csv'
+
+# === FOR LIVE CAMERA (Future) ===
+# (comment out the line above and uncomment the line below to create unique logs)
+# current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+# csv_file_name = f'log_{current_time}.csv'
+
 try:
     csv_file = open(csv_file_name, 'w', newline='')
     csv_writer = csv.writer(csv_file)
-    # write the header row
     csv_writer.writerow([
         'frame', 'track_id', 'class_name', 'confidence', 
         'distance_inches', 'bearing_degrees', 'risk_score', 'risk_label',
@@ -176,12 +207,12 @@ try:
     print(f"Logging detections to {csv_file_name}")
 except IOError as e:
     print(f"Error: Could not open CSV file for writing: {e}")
-    csv_writer = None # disable writing if file error
+    csv_writer = None 
 
 print("\n--- CONTROLS ---")
 print("  Clickable buttons on-screen")
 print("  [q] = Quit (keyboard)")
-print("\nProcessing video...")
+print(f"\nProcessing {'Live Camera' if isinstance(VIDEO_FILE, int) else VIDEO_FILE}...")
 
 prev_frame_time = 0
 fps_to_display = 0
@@ -202,8 +233,13 @@ while cap.isOpened():
 
     ret, frame = cap.read()
     if not ret:
-        break
+        if isinstance(VIDEO_FILE, int):
+            print("Error: Camera feed lost. Exiting.")
+        else:
+            print("End of video file.")
+        break 
         
+    # resize frame to 720p *before* processing
     frame = cv2.resize(frame, (IMAGE_WIDTH, IMAGE_HEIGHT))
 
     frame_counter += 1
@@ -307,7 +343,6 @@ while cap.isOpened():
             cv2.putText(frame, label_risk, (x1, y_offset + 80),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             
-            # --- new: write data to csv ---
             if csv_writer is not None:
                 csv_writer.writerow([
                     frame_counter, track_id, class_name, f"{conf:.2f}",
