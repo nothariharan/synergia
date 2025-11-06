@@ -25,7 +25,7 @@ This project is an end-to-end underwater processing system built for the Synergi
 
 * **Model:** YOLOv8n (nano)
 * **Dataset Source:** The video data and test footage for this project are provided via this Google Drive link:
-    [**Project Dataset & Videos**](https://drive.google.com/drive/folders/1gm4H2dS3ZpozmAOmk73TfCcGhZsvulR6?usp=sharing&pli=1)
+    [**Project Dataset & Videos**](/)
 * **Classes:** The model was trained on 9 classes:
     1.  `DockingStation`
     2.  `Ball_Red`
